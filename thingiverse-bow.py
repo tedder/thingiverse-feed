@@ -60,16 +60,13 @@ class ThingDB:
     self.get_db()
 
   def have_column(self, table, column):
-    try:
-      d = self.get_db()
-      c = self.db.cursor()
-      c.execute('SELECT {} FROM {} LIMIT 1'.format(column, table))
-      c.fetchone()
-      # must be okay
-      return True
+    d = self.get_db()
+    c = self.db.cursor()
+    c.execute('SELECT {} FROM {} LIMIT 1'.format(column, table))
+    c.fetchone()
+    # must be okay
+    return True
 
-    except sqlite3.OperationalError:
-      return None # this is expected
 
   def add_column(self, table, column, column_def):
     if self.have_column(table, column):
@@ -80,11 +77,6 @@ class ThingDB:
     d.commit()
 
   def get_db(self):
-    # versions needed:
-    # >= 3.3 for 'if not exists'
-    #print(sqlite3.sqlite_version) -> '3.18.0'
-    #print(sqlite3.sqlite_version_info) -> (3, 18, 0)
-
     if self.db and self.db.ping(reconnect=True):
       return self.db
 
