@@ -346,66 +346,66 @@ def get_recent_collection_items(db, apiurl, collection_name):
   #print(json.dumps(retitems))
   return retitems
 
+def handler(event, context):
+  db = ThingDB()
+  s3key = 'rss/thingiverse_kryptonicloser_recent_collected.json'
+  items = []
 
-db = ThingDB()
-s3key = 'rss/thingiverse_kryptonicloser_recent_collected.json'
-items = []
+  collections = []
+  pagenum = 1
+  while True:
+    if DEBUG > 1: print("requesting page: ", pagenum)
+    this_collection_set = make_request(BASE_URL, {'page': pagenum})
+    if DEBUG: print("page: ", pagenum, " set size: ", len(this_collection_set))
+    if len(this_collection_set) == 0:
+      break
+    collections.extend(this_collection_set)
+    pagenum += 1
 
-collections = []
-pagenum = 1
-while True:
-  if DEBUG > 1: print("requesting page: ", pagenum)
-  this_collection_set = make_request(BASE_URL, {'page': pagenum})
-  if DEBUG: print("page: ", pagenum, " set size: ", len(this_collection_set))
-  if len(this_collection_set) == 0:
-    break
-  collections.extend(this_collection_set)
-  pagenum += 1
-
-for collection in collections:
-  #print(collection)
-  last_modified = parsedate(collection['modified'])
-  if DEBUG: print(collection.get('Name'), last_modified, datetime.now(timezone.utc))
-  if last_modified.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc)-timedelta(days=14):
-    if DEBUG: print("too old")
-    continue
-
-  if collection['name'].lower().startswith(('best of', 'bow')): # and  '2/10' in collection['name']:
+  for collection in collections:
+    #print(collection)
     last_modified = parsedate(collection['modified'])
-    if DEBUG: print(collection['url'], collection['modified'], collection['name'])
-    #sys.stderr.write("{} {} {}\n".format(collection['url'], collection['modified'], collection['name']))
-    colitems = get_recent_collection_items(db, collection['url'], collection['name'])
-    items += colitems
-    #break
+    if DEBUG: print(collection.get('Name'), last_modified, datetime.now(timezone.utc))
+    if last_modified.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc)-timedelta(days=14):
+      if DEBUG: print("too old")
+      continue
 
-jsonblob = {
-  'version': 'https://jsonfeed.org/version/1',
-  'items': items,
-  'title': 'recent items collected by KryptonicLoser',
-  'home_page_url': 'https://www.thingiverse.com/KryptonicLoser/about',
-  'feed_url': 'https://dyn.tedder.me/' + s3key,
-  'user_comment': "items from recent collections of KryptonicLoser. Designed to get the Best-of-Week items.",
-  'author': { 'name': 'tedder', 'url': 'https://tedder.me/' },
-}
+    if collection['name'].lower().startswith(('best of', 'bow')): # and  '2/10' in collection['name']:
+      last_modified = parsedate(collection['modified'])
+      if DEBUG: print(collection['url'], collection['modified'], collection['name'])
+      #sys.stderr.write("{} {} {}\n".format(collection['url'], collection['modified'], collection['name']))
+      colitems = get_recent_collection_items(db, collection['url'], collection['name'])
+      items += colitems
+      #break
 
-if DEBUG_S3:
-  with open(os.path.basename(s3key) or 'bow.json', 'w') as f:
-    f.write(json.dumps(jsonblob, indent=2))
-else:
-  s3 = boto3.client('s3')
-  #cloudfront_client = boto3.client('cloudfront')
-  putret = s3.put_object(
-    Body=json.dumps(jsonblob, indent=2),
-    ACL='public-read',
-    Bucket='dyn.tedder.me',
-    Key=s3key,
-    CacheControl='max-age=6',
-    ContentType='application/json',
-  )
-#print(putret['ETag'])
-#print(json.dumps(jsonblob, indent=2))
-#print(json.dumps(items, default=json_serial, indent=2))
-#curl -X GET --header "Authorization: Bearer 6f9d1fffeb271181861cae288ce07527" https://api.thingiverse.com/users/KryptonicLoser/collections | python3 -m json.tool
-#jq '.[]|[.modified,.name,.url]'
+  jsonblob = {
+    'version': 'https://jsonfeed.org/version/1',
+    'items': items,
+    'title': 'recent items collected by KryptonicLoser',
+    'home_page_url': 'https://www.thingiverse.com/KryptonicLoser/about',
+    'feed_url': 'https://dyn.tedder.me/' + s3key,
+    'user_comment': "items from recent collections of KryptonicLoser. Designed to get the Best-of-Week items.",
+    'author': { 'name': 'tedder', 'url': 'https://tedder.me/' },
+  }
+
+  if DEBUG_S3:
+    with open(os.path.basename(s3key) or 'bow.json', 'w') as f:
+      f.write(json.dumps(jsonblob, indent=2))
+  else:
+    s3 = boto3.client('s3')
+    #cloudfront_client = boto3.client('cloudfront')
+    putret = s3.put_object(
+      Body=json.dumps(jsonblob, indent=2),
+      ACL='public-read',
+      Bucket='dyn.tedder.me',
+      Key=s3key,
+      CacheControl='max-age=6',
+      ContentType='application/json',
+    )
+  #print(putret['ETag'])
+  #print(json.dumps(jsonblob, indent=2))
+  #print(json.dumps(items, default=json_serial, indent=2))
+  #curl -X GET --header "Authorization: Bearer 6f9d1fffeb271181861cae288ce07527" https://api.thingiverse.com/users/KryptonicLoser/collections | python3 -m json.tool
+  #jq '.[]|[.modified,.name,.url]'
 
 
